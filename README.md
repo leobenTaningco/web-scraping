@@ -1,0 +1,1 @@
+A simple chapmanganato scraper using puppeteer

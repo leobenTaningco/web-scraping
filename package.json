@@ -1,0 +1,12 @@
+{
+  "name": "web-scraping",
+  "version": "1.0.0",
+  "description": "uwu",
+  "main": "index.js",
+  "repository": "https://github.com/leobenTaningco/web-scraping.git",
+  "author": "leobenTaningco <leotaningco@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^24.2.1"
+  }
+}
