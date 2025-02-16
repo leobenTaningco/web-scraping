@@ -1,7 +1,6 @@
 import puppeteer from 'puppeteer'
-import { transposeIterableHandle } from 'puppeteer';
-
-const url = "https://chapmanganato.to/manga-vx999006"
+import readline from 'readline';
+import { stdin as input, stdout as output } from 'node:process';
 
 async function searchManga(title){
     console.log("searchManga is being called")
@@ -23,24 +22,30 @@ async function searchManga(title){
 
     //await page.screenshot({path: 'Stest.png'})
 
-    const results = await page.evaluate(() => {
-        return Array.from(document.querySelectorAll('#SearchResult ul a'))
-            .slice(0,5)
-            .map(ul => (
-            ul.href.trim() // is now a string instead of an object
-        ));
-    });
+    try{    
+        const urls = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('#SearchResult ul a'))
+                .slice(0,5)
+                .map(ul => (
+                ul.href.trim() // is a string instead of an object, {} if u want an object 
+            ));
+        });
+        await browser.close();
 
-    await browser.close();
+        const results = [];
+        for(const url of urls){
+            const title = await getNames(url); 
+            results.push({Title: title, Link: url});
+        }
 
-    for (const url of results){
-        getNames(url)
+        return results;
+    }catch(error){
+        console.log(title + " not found");
+        await browser.close();
+        return [];
     }
-    return results;
 
 }
-
-
 
 async function getNames(url){
     console.log(`getNames is being called `)
@@ -51,18 +56,18 @@ async function getNames(url){
         await page.goto(url);
         const mangaTitle = await page.evaluate(() => {
             return document.querySelector('.story-info-right h1')?.textContent.trim();
-        })
-        console.log(`📖 Manga Title: ${mangaTitle}`)
+        });
         await browser.close();
+        return mangaTitle;
     }catch (error){
         await page.goto(url);
         const mangaTitle = await page.evaluate(() => {
             return document.querySelector('.story-info-right h1')?.textContent.trim();
-        })
-        console.log(`📖 errManga Title: ${mangaTitle}`)
+        });
         await browser.close();
+        return mangaTitle;
     }finally{
-        await browser.close(); // so that if an error happens, it closes the tab
+        await browser.close(); // if an error happens, it closes the tab
     }
 
 }
@@ -97,8 +102,34 @@ async function getChapter(url){
 }
 
 const main = async () => {
+    const rl = readline.createInterface({input,output});
 
-    const url = await searchManga('spy x');
+    rl.question("Enter title: ", async (title) =>{
+        console.log("Searching for " + title);
+        const results = await searchManga(title);  
+        if(results.length===0){
+            console.log("Nothing found");
+            rl.close;
+            return;
+        }
+
+        results.forEach((manga, index) => {
+            console.log(`${index+1}. ${manga.Title} ${manga.Link}` )
+        })
+        
+        rl.question("Choose a number: ", async (choice) => {
+            const selectedIndex = parseInt(choice,10)-1;
+
+            if(selectedIndex >= 0 && selectedIndex < results.length){
+                console.log(`Fetching ${results[selectedIndex].Title}`);
+                await getChapter(results[selectedIndex].Link);
+            }else{
+                console.log("nah bro choose a number it aint hard");
+            }
+
+            rl.close();
+        })
+    })
 
 }
 main();
