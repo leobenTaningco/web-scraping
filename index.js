@@ -2,9 +2,12 @@ import puppeteer from 'puppeteer'
 import readline from 'readline';
 import { stdin as input, stdout as output } from 'node:process';
 
-async function searchManga(title){
+async function launchBrowser(){
+    return await puppeteer.launch({headless: false});
+}
+
+async function searchManga(browser, title){
     console.log("searchManga is being called")
-    const browser = await puppeteer.launch();
     const page = await browser.newPage();
 
     const aurl = 'https://chapmanganato.to/'
@@ -30,26 +33,22 @@ async function searchManga(title){
                 ul.href.trim() // is a string instead of an object, {} if u want an object 
             ));
         });
-        await browser.close();
-
+        await page.close();
         const results = [];
         for(const url of urls){
-            const title = await getNames(url); 
+            const title = await getNames(browser, url); 
             results.push({Title: title, Link: url});
         }
-
         return results;
     }catch(error){
         console.log(title + " not found");
-        await browser.close();
         return [];
     }
 
 }
 
-async function getNames(url){
+async function getNames(browser, url){
     console.log(`getNames is being called `)
-    const browser = await puppeteer.launch();
     const page = await browser.newPage();
 
     try{
@@ -57,23 +56,22 @@ async function getNames(url){
         const mangaTitle = await page.evaluate(() => {
             return document.querySelector('.story-info-right h1')?.textContent.trim();
         });
-        await browser.close();
+        
         return mangaTitle;
     }catch (error){
         await page.goto(url);
         const mangaTitle = await page.evaluate(() => {
             return document.querySelector('.story-info-right h1')?.textContent.trim();
         });
-        await browser.close();
+        
         return mangaTitle;
     }finally{
-        await browser.close(); // if an error happens, it closes the tab
+         // if an error happens, it closes the tab
+         await page.close();
     }
 
 }
-async function getChapter(url){
-
-    const browser = await puppeteer.launch();
+async function getChapter(browser, url){
     const page = await browser.newPage();
     await page.goto(url);
 
@@ -97,16 +95,17 @@ async function getChapter(url){
     console.log('📜 Chapters:', chapters);
       
     //await page.screenshot({path: 'test.png'})
-    await browser.close();
+    await page.close();
 
 }
 
 const main = async () => {
+    const browser = await launchBrowser();
     const rl = readline.createInterface({input,output});
 
     rl.question("Enter title: ", async (title) =>{
         console.log("Searching for " + title);
-        const results = await searchManga(title);  
+        const results = await searchManga(browser, title);  
         if(results.length===0){
             console.log("Nothing found");
             rl.close;
@@ -122,11 +121,11 @@ const main = async () => {
 
             if(selectedIndex >= 0 && selectedIndex < results.length){
                 console.log(`Fetching ${results[selectedIndex].Title}`);
-                await getChapter(results[selectedIndex].Link);
+                await getChapter(browser, results[selectedIndex].Link);
             }else{
                 console.log("nah bro choose a number it aint hard");
             }
-
+            await browser.close();
             rl.close();
         })
     })
